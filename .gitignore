@@ -26,3 +26,8 @@ poetry.lock*
 Thumbs.db
 
 .coverage
+
+# YOLO weights
+*.pt
+
+results/
