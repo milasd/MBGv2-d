@@ -25,7 +25,7 @@ poetry.lock*
 .DS_Store
 Thumbs.db
 
-.coverage
+.coverage*
 
 # YOLO weights
 *.pt

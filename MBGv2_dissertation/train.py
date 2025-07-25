@@ -1,6 +1,18 @@
+"""
+YOLO Model Finetuning and Evaluation Script.
+
+This script provides functionality for training YOLO models and evaluating their
+performance with F1 score analysis and optimal threshold detection.
+
+Usage:
+    python train.py --data_config path/to/data.yaml --hyp_config path/to/hyp.yaml
+
+Example:
+    python train.py --data_config data.yaml --hyp_config hyp.yaml --n_runs 3 --device 0
+"""
+
 # import pdb
 import argparse
-import logging
 import numpy as np
 import pandas as pd
 
@@ -9,8 +21,9 @@ from typing import List, Tuple
 from ultralytics import YOLO  # type: ignore[import-untyped]
 from ultralytics.utils.metrics import DetMetrics  # type: ignore[import-untyped]
 
+from MBGv2_dissertation.utils.logging import get_logger
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = get_logger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -21,14 +34,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data_config",
         type=Path,
-        help="Path to the data configuration file (YAML)",
-        default="/home/mila.oliveira/repos/sahi/fold1/10/mosquito_tire_fold1_0067.yaml",
+        default="",
+        help="Path to the data configuration file (YAML) for YOLO",
     )
     parser.add_argument(
         "--hyp_config",
         type=Path,
-        default="/home/mila.oliveira/repos/MBGv2-dissertation/config/hyp_mosquito_tire_dissertation.yaml",
-        help="Path to the hyperparameter configuration file (YAML)",
+        default="",
+        help="Path to the hyperparameter configuration file (YAML) for YOLO",
     )
     parser.add_argument(
         "--out_dir",
@@ -96,9 +109,9 @@ def calculate_optimal_threshold(
             best_avg_f1 = avg_f1
             best_threshold = threshold
 
-    logging.info("\nThreshold Analysis:")
-    logging.info("-" * 45)
-    logging.info(f"Best Average F1: {best_avg_f1:.4f}")
+    logger.info("\nThreshold Analysis:")
+    logger.info("-" * 45)
+    logger.info(f"Best Average F1: {best_avg_f1:.4f}")
     return best_threshold
 
 
@@ -164,7 +177,7 @@ def train_and_evaluate(
     all_runs_overall_f1_avg: List[float] = []
 
     for i in range(n_runs):
-        logging.info(f"Starting training run {i + 1}/{n_runs}...")
+        logger.info(f"Starting training run {i + 1}/{n_runs}...")
         model = YOLO(yolo_model)
         model.train(
             data=data_config,
@@ -187,12 +200,12 @@ def train_and_evaluate(
     average_f1_across_runs = np.mean(all_runs_f1_bins, axis=0)
     average_f1_per_bin["average_f1_across_runs"] = average_f1_across_runs
 
-    logging.info("\nAverage F1 per Confidence Interval (All Runs):")
-    logging.info(average_f1_per_bin[["confidence_bin", "average_f1_across_runs"]])
-    logging.info(
+    logger.info("\nAverage F1 per Confidence Interval (All Runs):")
+    logger.info(average_f1_per_bin[["confidence_bin", "average_f1_across_runs"]])
+    logger.info(
         f"\nOverall Average F1 (All Runs): {np.mean(all_runs_overall_f1_avg):.3f}"
     )
-    logging.info(f"\nOptimal τ: {optimal_threshold:.2f}\n")
+    logger.info(f"\nOptimal τ: {optimal_threshold:.2f}\n")
 
 
 def main() -> None:

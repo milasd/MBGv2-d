@@ -10,7 +10,7 @@ check:
 .PHONY: test
 test:
 	@echo "Testing code: Running pytest"
-	@uv run pytest --cov --cov-config=pyproject.toml --cov-report=xml tests
+	@uv run pytest -v --cov="MBGv2_dissertation"
 
 .PHONY: install
 install:

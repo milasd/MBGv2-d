@@ -3,7 +3,7 @@ name = "mbgv2-dissertation"
 version = "0.1.0"
 description = "MBGv2 dataset pre-processing and finetuning scripts for YOLO models."
 authors = [{ name = "milasd", email = "mila.oliveira@coppe.ufrj.br" }]
-requires-python = ">=3.12"
+requires-python = "~=3.12"
 readme = "README.md"
 dependencies = [
     "ultralytics (==8.2.91)",
@@ -27,15 +27,6 @@ dev = [
 ]
 
 [tool.uv]
-
-[[tool.uv.index]]
-name = "pytorch-gpu"
-url = "https://download.pytorch.org/whl/cu118"
-explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch-gpu" }
-torchvision = { index = "pytorch-gpu" }
 
 [tool.hatch.build.targets.sdist]
 include = ["MBGv2_dissertation"]

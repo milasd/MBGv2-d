@@ -2,14 +2,27 @@ import argparse
 import json
 import os
 
-"""
-This script removes all image files that don't contain any object annotations
-(negative samples).
+from MBGv2_dissertation.utils.logging import get_logger
 
-This step is necessary to reduce storage usage, 
-as sahi will only filter these samples in the annotations,
-but all image slices are saved regardless.
+
 """
+Empty Sample Removal
+
+This script removes all image files that don't contain any object annotations
+(negative samples) to reduce storage usage after SAHI slicing operations.
+
+SAHI only filters empty samples in annotations but saves all image slices regardless,
+making this cleanup step necessary for efficient storage management.
+
+Usage:
+    python remove_empty_samples.py --images_folder path/to/images --coco_annotation_file path/to/annotations.json
+
+Example:
+    python remove_empty_samples.py --images_folder ./sliced_images --coco_annotation_file ./annotations.json
+"""
+
+
+logger = get_logger(__name__)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -43,17 +56,17 @@ def remove_empty_samples(images_folder: str, coco_annotation_file: str) -> None:
     )
 
     # Log the paths being used
-    print(f"Opening images folder: {images_folder}")
+    logger.info(f"Opening images folder: {images_folder}")
 
     with open(coco_annotation_file, "r") as f:
-        print(f"Reading COCO annotation file: {coco_annotation_file}")
+        logger.info(f"Reading COCO annotation file: {coco_annotation_file}")
         coco_data = json.load(f)
 
     # Get the mapping of image file names to IDs
     image_id_to_filename = {img["id"]: img["file_name"] for img in coco_data["images"]}
 
     # Log the number of images in the annotations
-    print(f"Number of images in annotations: {len(image_id_to_filename)}")
+    logger.info(f"Number of images in annotations: {len(image_id_to_filename)}")
 
     # Iterate through images in the folder and delete those without annotations
     for image in os.listdir(images_folder):
@@ -61,7 +74,7 @@ def remove_empty_samples(images_folder: str, coco_annotation_file: str) -> None:
             os.remove(os.path.join(images_folder, image))
             continue
 
-    print("Removed all slices without object annotations.")
+    logger.info("Removed all slices without object annotations.")
 
 
 if __name__ == "__main__":

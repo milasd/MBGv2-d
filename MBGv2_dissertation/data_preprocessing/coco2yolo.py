@@ -9,24 +9,25 @@ from typing import Optional
 
 
 """
-## Script modified from: JSON2YOLO (https://github.com/ultralytics/JSON2YOLO)
+COCO to YOLO Annotation Conversion
 
-$ python coco2yolo.py --help
-usage: coco2yolo.py [-h] --json_dir JSON_DIR [--output_dir OUTPUT_DIR] [--use_segments]
+This script converts COCO JSON annotations to YOLO ultralytics format.
+It automatically organizes output into train/val folders based on 
+the original COCO json filenames.
 
-Convert COCO JSON annotations to YOLO format.
+Script modified from: JSON2YOLO (https://github.com/ultralytics/JSON2YOLO)
 
-options:
-  -h, --help                show this help message and exit
-  --json_dir JSON_DIR       Directory containing all COCO JSON files
-  --output_dir OUTPUT_DIR   Directory to save YOLO formatted labels folder (optional). 
-                            If not provided, annotations will be saved inside [json_dir]/labels
+Usage:
+    python coco2yolo.py --json_dir path/to/json/files [--output_dir path/to/output]
 
+Example:
+    python coco2yolo.py --json_dir ./annotations --output_dir ./yolo_labels
 
-If annotation file contains "train" in its name, YOLO annotations will be saved to labels/train;
-If annotation file contains "val" in its name, YOLO annotations will be saved to labels/val;
-Else, YOLO annotations will be saved to labels/.
-
+Features:
+    - Converts COCO bbox format to YOLO normalized format
+    - Automatically creates train/val subdirectories, suitable for YOLO ultralytics training
+    - Skips crowd annotations and invalid bounding boxes
+    - Removes duplicate annotations
 """
 
 
