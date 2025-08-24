@@ -77,7 +77,7 @@ Subsequently train and validate a YOLOv8s model with the sliced dataset:
 
 ```bash
 chmod +x sh/yolo/train_all_folds.sh
-bash sh/yolo/train_all_folds.sh
+bash sh/yolo/train_all_folds.sh --data_dir [Path to dir w/ training data .YAML] 
 ```
 
 This script will reproduce the training and evaluation across the 5 folds for the MBGv2.
