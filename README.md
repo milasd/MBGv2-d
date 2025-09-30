@@ -126,8 +126,10 @@ chmod +x sh/frame_slicing/custom_fold_processing.sh
   --n-workers 6
 ```
 
+This script enables multiple definitions for the frame slicing process:
+
 - **Custom fold selection**: Process specific folds (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"1"`)
-- **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val"`, etc.)
+- **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val train"`, etc.)
 - **Custom min_area_ratio ranges**: Define specific values (`"0.0,0.5,1.0"`) or ranges (`"0.5-0.8"`)
 - **Parallel processing**: Automatically parallelizes all fold+min_area_ratio+split combinations for optimal performance
 
