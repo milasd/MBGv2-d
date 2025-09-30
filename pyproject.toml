@@ -3,7 +3,7 @@ name = "mbgv2-dissertation"
 version = "0.3.0"
 description = "MBGv2 dataset pre-processing and finetuning scripts for YOLO models."
 authors = [{ name = "milasd", email = "mila.oliveira@coppe.ufrj.br" }]
-requires-python = "~=3.12"
+requires-python = "~=3.11"
 readme = "README.md"
 dependencies = [
     "ultralytics (==8.2.91)",

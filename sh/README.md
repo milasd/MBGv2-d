@@ -5,9 +5,9 @@ This directory contains shell scripts for automating the MBGv2 dataset processin
 ## Scripts Overview
 
 ### Frame Slicing Pipeline
-- **`frame_slicing/process_all_folds.sh`**: Processes all 5 folds of the MBGv2 dataset, slicing 4K frames into 640x640 excerpts with overlapping regions and generating COCO and YOLO format annotations.
+- **`frame_slicing/process_all_folds.sh`**: Processes all 5 folds of the MBGv2 dataset, slicing 4K frames into 640x640 excerpts with overlapping regions and generating COCO and YOLO format annotations. The default parameters follow the slicing process for tires.
 
-The default parameters follow the slicing process for tires.
+- **`frame_slicing/custom_fold_processing.sh`**: Flexible frame slicing script with customizable fold selection, dataset splits, and min_area_ratio values. Supports incremental processing and partial dataset generation.
 
 ### Model Training Pipeline  
 - **`yolo/train_all_folds.sh`**: Trains YOLOv8s models across all 5 folds using the sliced dataset with customizable parameters.
@@ -129,6 +129,134 @@ bash sh/frame_slicing/process_all_folds.sh \
   --object-name watertank
 ```
 
+### Custom Frame Slicing
+
+The `custom_fold_processing.sh` script provides flexible frame slicing with granular control over folds, dataset splits, and min_area_ratio values. This script is ideal for custom experiments or incremental processing.
+
+**Slicing options:**
+- **Custom fold selection**: Process specific folds or ranges (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"2"`)
+- **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val test"`, etc.)
+- **Custom min_area_ratio ranges**: Define specific values (`"0.0,0.5,1.0"` or `"0.0"`) or ranges (`"0.5-0.8"`)
+- **Incremental processing**: Updates existing YAML files instead of overwriting them
+
+**Basic usage**
+
+Run the script passing the required parameters.
+```bash
+chmod +x sh/frame_slicing/custom_fold_processing.sh
+
+# Basic usage with mandatory parameters
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/annotations" \
+  --object-name "tire" \
+  --overlap-ratio 0.067 \
+  --folds "0-4" \
+  --splits "train val" \
+  --min-area-ratios "0.0-1.0"
+```
+
+**Full documentation:**
+```bash
+./sh/frame_slicing/custom_fold_processing.sh --help
+
+Usage: ./sh/frame_slicing/custom_fold_processing.sh [OPTIONS]
+
+Customizable script for slicing MBGv2 dataset frames containing objects across 
+specified folds, dataset splits, and min_area_ratio values.
+
+OPTIONS:
+    --image-dir DIR         Path to directory containing frames from MBGv2 dataset
+                                (4K resolution images)
+    --annotations-dir DIR   Path to directory containing COCO annotations in .json format
+                               (should contain fold structure with train/val/test JSON files as: 
+                                coco_format_{split}{0-4}_{object_name}.json)
+    --slice-size SIZE       Size of image slices (default: 640)
+    --overlap-ratio NUM     Overlap ratio between slices (default: 0.067, for MBGv2 tires)
+    --object-name TEXT      Class of MBGv2 object in annotations (default: tire)
+    --output-dir DIR        Path to output directory (default: ./MBGv2_sliced)
+    --folds LIST            Comma-separated list of fold numbers (e.g., "0,1,2" or "0-4" or "1,3")
+                               (default: "0-4")
+    --splits LIST           Space-separated list of dataset splits to process
+                               (e.g., "train", "train val", "train val test")
+                               (default: "train val")
+    --min-area-ratios LIST  Comma-separated list of min_area_ratio values
+                               (e.g., "0.0,0.5,1.0" or "0.0-1.0" or "0.5")
+                               (default: "0.0-1.0" in steps of 0.1)
+    --help                  Show this help message and exit
+
+FOLD SPECIFICATION:
+    Folds can be specified as:
+    - Single values: "0" or "1,3,5"
+    - Ranges: "0-4" (inclusive)
+    - Mixed: "0,2-4,7"
+
+MIN_AREA_RATIO SPECIFICATION:
+    Min area ratios can be specified as:
+    - Single values: "0.5" or "0.0,0.5,1.0"
+    - Ranges: "0.0-1.0" (in steps of 0.1) or "0.5-0.8"
+    - Mixed: "0.0,0.5-0.8,1.0"
+
+EXAMPLES:
+    # Process folds 0-2 with train and val splits
+    ./sh/frame_slicing/custom_fold_processing.sh --folds "0-2" --splits "train val"
+    
+    # Process only fold 0 with all splits and specific min_area_ratios
+    ./sh/frame_slicing/custom_fold_processing.sh --folds "0" --splits "train val test" --min-area-ratios "0.0,0.5,1.0"
+    
+    # Process folds 1 and 3 with only train split
+    ./sh/frame_slicing/custom_fold_processing.sh --folds "1,3" --splits "train" --min-area-ratios "0.5-0.8"
+```
+
+**Usage Examples**
+
+Process only validation split for specific folds:
+```bash
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/coco_annotations_dir" \
+  --object-name "tire" \
+  --overlap-ratio 0.067 \
+  --folds "0-3" \
+  --splits "val" \
+  --min-area-ratios "0.0"
+```
+
+Incremental processing (add train split to existing val data):
+```bash
+# First run: process validation data
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/coco_annotations_dir" \
+  --object-name "watertank" \
+  --overlap-ratio 0.1 \
+  --folds "0" \
+  --splits "val" \
+  --min-area-ratios "0.5"
+
+# Second run: add training data (YAML file will be updated, not overwritten)
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/coco_annotations_dir" \
+  --object-name "watertank" \
+  --overlap-ratio 0.1 \
+  --folds "0" \
+  --splits "train" \
+  --min-area-ratios "0.5"
+```
+
+Process large fold ranges with custom min_area_ratios:
+```bash
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/coco_annotations_dir" \
+  --object-name "tire" \
+  --overlap-ratio 0.067 \
+  --folds "0-20" \
+  --splits "train val test" \
+  --min-area-ratios "0.0,0.3,0.7,1.0"
+```
+
 ### Model Training
 
 The `train_all_folds.sh` script trains YOLOv8s models across all 5 folds with the sliced dataset.
@@ -136,12 +264,12 @@ The `train_all_folds.sh` script trains YOLOv8s models across all 5 folds with th
 **Basic usage:**
 ```bash
 chmod +x sh/yolo/train_all_folds.sh
-.sh/yolo/train_all_folds.sh --data-dir [path to sliced dataset dir]
+.sh/yolo/train_all_folds.sh --data-dir [path to sliced dataset dir] --hyp-config [path to yaml hyperparameters config]
 ```
 
 You can run the help command for the full documentation:
 
-```
+```shell
 ✗ ./sh/yolo/train_all_folds.sh --help
 Usage: ./sh/yolo/train_all_folds.sh [OPTIONS]
 
@@ -154,6 +282,7 @@ OPTIONS:
     --num-runs INT          Number of independent training runs per fold (default: 1). 
                               Each training run is independent and starts from the same YOLO pretrained weights.
     --device INT            GPU device ID (0, 1, 2, ...) for training (default: 0).
+    --hyp-config FILE       Path to YAML file containing hyperparameters for YOLO training (default: config/hyp_mosquito_tire_dissertation.yaml).
     --help                  Show this help message.
 
 EXAMPLE OF EXPECTED BASE DATA DIRECTORY STRUCTURE:
@@ -170,11 +299,11 @@ EXAMPLES:
     ./sh/yolo/train_all_folds.sh
     
     # Custom data directory and number of runs
-    ./sh/yolo/train_all_folds.sh --data-dir [path to base data dir] --num-runs 3
+    ./sh/yolo/train_all_folds.sh --data-dir [path to base data dir] --num-runs 3 --hyp-config config/my_custom_hyperparams.yaml
 
-    # or
 
-    ./sh/yolo/train_all_folds.sh --data_dir /home/[path to base data dir] --results-dir /home/[path to custom results dir] --num-runs 5 --device 1
+    # Full customization
+    ./sh/yolo/train_all_folds.sh --data-dir /home/[path to base data dir] --results-dir /home/[path to custom results dir] --num-runs 5 --device 1 --hyp-config config/my_hyp.yaml
 ```
 
 
