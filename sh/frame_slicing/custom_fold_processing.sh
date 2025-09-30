@@ -309,25 +309,48 @@ for FOLD in $FOLD_LIST; do
 
         echo "  Completed processing for min_area_ratio=$MIN_AREA_RATIO."
 
-        # Generate the custom data.yaml file
+        # Generate or update the custom data.yaml file
         DATA_YAML_FILE="$OUTPUT_DIR/mosquito_${OBJECT_NAME}_fold${OUTPUT_FOLD}_${OVERLAP_RATIO//.}.yaml"
 
-        echo "  Creating data.yaml file: $DATA_YAML_FILE"
-        cat <<EOL > $DATA_YAML_FILE
+        if [[ -f "$DATA_YAML_FILE" ]]; then
+            echo "  Updating existing data.yaml file: $DATA_YAML_FILE"
+            
+            # Add new splits to existing YAML file
+            for SPLIT in $SPLITS; do
+                # Check if this split already exists in the YAML file
+                if ! grep -q "^${SPLIT}:" "$DATA_YAML_FILE"; then
+                    echo "    Adding $SPLIT split to existing YAML"
+                    # Find the line number where splits end (before 'nc:' line)
+                    LINE_NUM=$(grep -n "^nc:" "$DATA_YAML_FILE" | cut -d: -f1)
+                    if [[ -n "$LINE_NUM" ]]; then
+                        # Insert the new split before the 'nc:' line
+                        sed -i "${LINE_NUM}i\\${SPLIT}: images/${SPLIT}" "$DATA_YAML_FILE"
+                    else
+                        # If no 'nc:' line found, append before the end
+                        sed -i "/^names:/i\\${SPLIT}: images/${SPLIT}" "$DATA_YAML_FILE"
+                    fi
+                else
+                    echo "    Split $SPLIT already exists in YAML file"
+                fi
+            done
+        else
+            echo "  Creating new data.yaml file: $DATA_YAML_FILE"
+            cat <<EOL > $DATA_YAML_FILE
 path: $(realpath "$OUTPUT_DIR")
 
 EOL
 
-        # Add split paths to YAML
-        for SPLIT in $SPLITS; do
-            echo "$SPLIT: images/$SPLIT" >> $DATA_YAML_FILE
-        done
+            # Add split paths to YAML
+            for SPLIT in $SPLITS; do
+                echo "$SPLIT: images/$SPLIT" >> $DATA_YAML_FILE
+            done
 
-        cat <<EOL >> $DATA_YAML_FILE
+            cat <<EOL >> $DATA_YAML_FILE
 
 nc: 1  # number of classes
 names: ['$OBJECT_NAME']  # class names
 EOL
+        fi
     done
     echo "Completed processing for fold $FOLD (output folder fold${OUTPUT_FOLD})."
 done
