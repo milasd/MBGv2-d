@@ -1,6 +1,6 @@
 [project]
 name = "mbgv2-dissertation"
-version = "0.1.0"
+version = "0.3.0"
 description = "MBGv2 dataset pre-processing and finetuning scripts for YOLO models."
 authors = [{ name = "milasd", email = "mila.oliveira@coppe.ufrj.br" }]
 requires-python = "~=3.12"
@@ -27,6 +27,16 @@ dev = [
 ]
 
 [tool.uv]
+
+# If you're not using NVIDIA GPUs, you might need to change/remove this index. 
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-gpu" }
+torchvision = { index = "pytorch-gpu" }
 
 [tool.hatch.build.targets.sdist]
 include = ["MBGv2_dissertation"]

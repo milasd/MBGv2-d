@@ -6,6 +6,8 @@ DEFAULT_BASE_RESULTS_DIR="results"
 DEFAULT_NUM_RUNS=1
 # GPU device ID
 DEFAULT_DEVICE_ID=0
+# Hyperparameter config file
+DEFAULT_HYP_CONFIG="config/hyp_mosquito_tire_dissertation.yaml"
 
 
 show_help() {
@@ -21,6 +23,7 @@ OPTIONS:
     --num-runs INT          Number of independent training runs per fold (default: $DEFAULT_NUM_RUNS). 
                               Each training run is independent and starts from the same YOLO pretrained weights.
     --device INT            GPU device ID (0, 1, 2, ...) for training (default: $DEFAULT_DEVICE_ID).
+    --hyp-config FILE       Path to YAML file containing hyperparameters for YOLO training (default: $DEFAULT_HYP_CONFIG).
     --help                  Show this help message.
 
 EXAMPLE OF EXPECTED BASE DATA DIRECTORY STRUCTURE:
@@ -37,11 +40,11 @@ EXAMPLES:
     $0
     
     # Custom data directory and number of runs
-    $0 --data-dir [path to base data dir] --num-runs 3
+    $0 --data-dir [path to base data dir] --num-runs 3 --hyp-config config/my_custom_hyperparams.yaml
 
-    # or
 
-    $0 --data_dir /home/[path to base data dir] --results-dir /home/[path to custom results dir] --num-runs 5 --device 1
+    # Full customization
+    $0 --data-dir /home/[path to base data dir] --results-dir /home/[path to custom results dir] --num-runs 5 --device 1 --hyp-config config/my_hyp.yaml
 
 EOF
 }
@@ -51,6 +54,7 @@ BASE_DATA_DIR="$DEFAULT_BASE_DATA_DIR"
 BASE_RESULTS_DIR="$DEFAULT_BASE_RESULTS_DIR"
 NUM_RUNS="$DEFAULT_NUM_RUNS"
 DEVICE_ID="$DEFAULT_DEVICE_ID"
+HYP_CONFIG="$DEFAULT_HYP_CONFIG"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -69,6 +73,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --device)
             DEVICE_ID="$2"
+            shift 2
+            ;;
+        --hyp-config)
+            HYP_CONFIG="$2"
             shift 2
             ;;
         -h|--help)
@@ -125,7 +133,7 @@ for OUTPUT_FOLD in {1..5}; do
       TRAIN_COMMAND=""
 
       for YAML_FILE in $YAML_FILES; do
-        TRAIN_COMMAND+="uv run python ${TRAIN_PY_PATH} --data_config $YAML_FILE --out_dir $TRAIN_RESULTS_DIR --n_runs $NUM_RUNS --device $DEVICE_ID && "
+        TRAIN_COMMAND+="uv run python ${TRAIN_PY_PATH} --data_config $YAML_FILE --out_dir $TRAIN_RESULTS_DIR --n_runs $NUM_RUNS --device $DEVICE_ID --hyp_config $HYP_CONFIG && "
       done
       # Remove last trailing '&&'
       TRAIN_COMMAND=${TRAIN_COMMAND%&& }

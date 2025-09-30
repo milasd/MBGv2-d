@@ -19,8 +19,8 @@ OBJECT_NAME="tire"
 SLICE_SIZE=640
 OVERLAP_RATIO=0.067
 
-# Default settings, will be overwritten.
-MBGv2_DIR="/home/mila.oliveira/repos/data_mosquitoes_v2"
+# Default settings, should be overwritten by user.
+MBGv2_DIR="data_mosquitoes_v2"
 IMAGE_DIR="${MBGv2_DIR}/frames"
 ANNOTATIONS_DIR="${MBGv2_DIR}/coco_json_folds/5folds/tire/40m"
 BASE_OUT_DIR="MBGv2_sliced"
