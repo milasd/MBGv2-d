@@ -64,13 +64,6 @@ chmod +x sh/frame_slicing/process_all_folds.sh
 ```
 The output will contain train/val folders containing the sliced images, COCO and YOLO annotations.
 
-**Performance**: The script automatically parallelizes processing across all fold and min_area_ratio combinations (55 total jobs) for maximum efficiency.
-
-**Parameters:**
-- **Overlap ratio**: 0.067 (equivalent to 42px for tires, based on the maximum dimension of average object resolution)
-- **Slice size**: 640x640 pixels
-
-
 **Custom parameters example:**
 ```bash
 chmod +x sh/frame_slicing/process_all_folds.sh
@@ -126,7 +119,7 @@ chmod +x sh/frame_slicing/custom_fold_processing.sh
   --n-workers 6
 ```
 
-This script enables multiple definitions for the frame slicing process:
+Multiple definitions are accepted for the frame slicing process:
 
 - **Custom fold selection**: Process specific folds (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"1"`)
 - **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val train"`, etc.)
