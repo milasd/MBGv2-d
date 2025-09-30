@@ -11,8 +11,6 @@
 #  all min_area_ratios in range
 #  [0.0, 0.1, ..., 1.0]
 #
-#  TODO: OPTIMIZE the slicing process
-#  settings
 #####################################
 
 OBJECT_NAME="tire"
@@ -27,6 +25,9 @@ BASE_OUT_DIR="MBGv2_sliced"
 
 COCO_YOLO_SCRIPT_PATH="MBGv2_dissertation/data_preprocessing/coco2yolo.py"
 REMOVE_EMPTY_SLICES_SCRIPT_PATH="MBGv2_dissertation/data_preprocessing/remove_empty_samples.py"
+
+# N. of parallel workers
+N_WORKERS=""
 
 
 show_help() {
@@ -62,6 +63,8 @@ OPTIONS:
     --overlap-ratio NUM     Overlap ratio between slices (default: 0.067, for MBGv2 tires)
     --object_name TEXT      Class of MBGv2 object in annotations (default: tire)
     --output_dir DIR        Path to output directory (default: ./MBGv2_sliced)
+    --n-workers NUM         Number of parallel workers to use for processing
+                               (default: number of available CPUs, capped at available CPUs)
     --help                  Show this help message and exit
 
 
@@ -119,7 +122,7 @@ EOF
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        ---image-dir)
+        --image-dir)
             IMAGE_DIR="$2"
             shift 2
             ;;
@@ -139,6 +142,10 @@ while [[ $# -gt 0 ]]; do
             BASE_OUT_DIR="$2"
             shift 2
             ;;
+        --n-workers)
+            N_WORKERS="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -152,31 +159,39 @@ while [[ $# -gt 0 ]]; do
 done
 
 
+# Set default number of workers to available CPUs
+if [[ -z "$N_WORKERS" ]]; then
+    N_WORKERS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+fi
+
+# Cap N_WORKERS to available CPUs
+MAX_CPUS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+if [[ $N_WORKERS -gt $MAX_CPUS ]]; then
+    echo "Warning: Requested $N_WORKERS workers, but only $MAX_CPUS CPUs available. Using $MAX_CPUS workers."
+    N_WORKERS=$MAX_CPUS
+fi
+
+echo "Using $N_WORKERS parallel workers"
+
 # Check if output directory exists and creates it if not
 [[ ! -d "$BASE_OUT_DIR" ]] && mkdir -p "$BASE_OUT_DIR"
 
+# Function to process a single fold and min_area_ratio combination
+process_fold_min_area_ratio() {
+    local FOLD=$1
+    local MIN_AREA_RATIO=$2
+    
+    # Increment fold number by 1 for output directory naming
+    OUTPUT_FOLD=$((FOLD + 1))
+    
+    echo "Processing fold $FOLD (output folder fold${OUTPUT_FOLD}) with min_area_ratio=$MIN_AREA_RATIO..."
+    
+    # Construct the train and validation JSON paths for the current fold
+    COCO_TRAIN_JSON="${ANNOTATIONS_DIR}/coco_format_train${FOLD}_${OBJECT_NAME}.json"
+    COCO_VAL_JSON="${ANNOTATIONS_DIR}/coco_format_val${FOLD}_${OBJECT_NAME}.json"
 
-# Loop over each fold annotations
-for FOLD in {0..4}; do
-  # Increment fold number by 1 for output directory naming
-  OUTPUT_FOLD=$((FOLD + 1))
-  
-  echo "Processing fold $FOLD (output folder fold${OUTPUT_FOLD}) with train JSON: $COCO_TRAIN_JSON and val JSON: $COCO_VAL_JSON..."
-  
-  # Loop over min_area_ratio values from 0.0 to 1.0 in steps of 0.1
-  # Input COCO annotations pairs follow the naming coco_format_{train|val}{0-4}_{object_name}.json
-  # Eg.: coco_format_train0_tire.json, coco_format_val4_watertank.json
-  # Construct the train and validation JSON paths for the current fold
-  COCO_TRAIN_JSON="${ANNOTATIONS_DIR}/coco_format_train${FOLD}_${OBJECT_NAME}.json"
-  COCO_VAL_JSON="${ANNOTATIONS_DIR}/coco_format_val${FOLD}_${OBJECT_NAME}.json"
-
-  # Increment fold number by 1 for output directory naming
-  OUTPUT_FOLD=$((FOLD + 1))
-
-  OVERLAP_RATIO_TXT="$OVERLAP_RATIO"
-  echo "Processing fold $FOLD (output folder fold${OUTPUT_FOLD}) with train JSON: $COCO_TRAIN_JSON and val JSON: $COCO_VAL_JSON..."
-  for MIN_AREA_RATIO in $(seq 0.0 0.1 1.0)
-  do
+    OVERLAP_RATIO_TXT="$OVERLAP_RATIO"
+    
     echo "  Starting process for min_area_ratio=$MIN_AREA_RATIO."
     # Dynamically set output directory based on fold number and min_area_ratio
     MIN_AREA_RATIO_TXT="$MIN_AREA_RATIO"
@@ -204,7 +219,9 @@ for FOLD in {0..4}; do
     VAL_JSON_PATH="$OUTPUT_DIR/$VAL_JSON_NAME"
 
     # Filter slices without any object annotations
-    uv run python $REMOVE_EMPTY_SLICES_SCRIPT_PATH --images_folder $VAL_PATH --coco_annotation_file $VAL_JSON_PATH
+    if [[ -f "$VAL_JSON_PATH" ]]; then
+        uv run python $REMOVE_EMPTY_SLICES_SCRIPT_PATH --images_folder $VAL_PATH --coco_annotation_file $VAL_JSON_PATH
+    fi
 
     uv run sahi coco slice \
       --ignore_negative_samples \
@@ -223,18 +240,20 @@ for FOLD in {0..4}; do
     TRAIN_JSON_PATH="$OUTPUT_DIR/$TRAIN_JSON_NAME"
 
     # Filter slices without any object annotations
-    uv run python $REMOVE_EMPTY_SLICES_SCRIPT_PATH --images_folder $TRAIN_PATH --coco_annotation_file $TRAIN_JSON_PATH
+    if [[ -f "$TRAIN_JSON_PATH" ]]; then
+        uv run python $REMOVE_EMPTY_SLICES_SCRIPT_PATH --images_folder $TRAIN_PATH --coco_annotation_file $TRAIN_JSON_PATH
+    fi
 
     mkdir -p "$OUTPUT_DIR/images/train"
     mkdir -p "$OUTPUT_DIR/images/val"
 
     # Rename the training & validation data folder to "images/train" and "images/val"
-    [ -d "$TRAIN_PATH" ] && mv $TRAIN_PATH/* $OUTPUT_DIR/images/train
-    [ -d "$VAL_PATH" ] && mv $VAL_PATH/* $OUTPUT_DIR/images/val
+    [ -d "$TRAIN_PATH" ] && mv $TRAIN_PATH/* $OUTPUT_DIR/images/train 2>/dev/null || true
+    [ -d "$VAL_PATH" ] && mv $VAL_PATH/* $OUTPUT_DIR/images/val 2>/dev/null || true
 
     # Remove empty training/val folders
-    [ -d "$TRAIN_PATH" ] && rmdir $TRAIN_PATH
-    [ -d "$VAL_PATH" ] && rmdir $VAL_PATH
+    [ -d "$TRAIN_PATH" ] && rmdir $TRAIN_PATH 2>/dev/null || true
+    [ -d "$VAL_PATH" ] && rmdir $VAL_PATH 2>/dev/null || true
 
     # Convert the COCO annotations to YOLO format using coco2yolo.py
     echo "  Converting COCO annotations to YOLO format for fold ${OUTPUT_FOLD} and min_area_ratio=${MIN_AREA_RATIO}..."
@@ -255,8 +274,41 @@ val: images/val
 nc: 1  # number of classes
 names: ['$OBJECT_NAME']  # class names
 EOL
+    
+    echo "Completed processing for fold $FOLD (output folder fold${OUTPUT_FOLD}) with min_area_ratio=$MIN_AREA_RATIO."
+}
+
+# Generate all job combinations
+JOBS=()
+for FOLD in {0..4}; do
+  for MIN_AREA_RATIO in $(seq 0.0 0.1 1.0); do
+    JOBS+=("$FOLD:$MIN_AREA_RATIO")
   done
-  echo "Completed processing for fold $FOLD (output folder fold${OUTPUT_FOLD}."
 done
+
+echo "Generated ${#JOBS[@]} total jobs (5 folds × 11 min_area_ratios)"
+
+# Process jobs in parallel
+RUNNING_JOBS=0
+
+for JOB in "${JOBS[@]}"; do
+    # Wait if we've reached the maximum number of parallel workers
+    while [[ $RUNNING_JOBS -ge $N_WORKERS ]]; do
+        # Wait for any background job to complete
+        wait -n
+        RUNNING_JOBS=$((RUNNING_JOBS - 1))
+    done
+    
+    # Extract fold and min_area_ratio from job string
+    FOLD=$(echo $JOB | cut -d: -f1)
+    MIN_AREA_RATIO=$(echo $JOB | cut -d: -f2)
+    
+    # Start processing in background
+    process_fold_min_area_ratio $FOLD $MIN_AREA_RATIO &
+    RUNNING_JOBS=$((RUNNING_JOBS + 1))
+done
+
+# Wait for all remaining background jobs to complete
+wait
 
 echo "All processes for all folds completed!"

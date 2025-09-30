@@ -47,14 +47,24 @@ To reproduce the frame slicing experiments — which slice annotated 4K frames f
 ```bash
 chmod +x sh/frame_slicing/process_all_folds.sh
 
-# Run the script
+# Run the script (uses all available CPU cores by default)
 ./sh/frame_slicing/process_all_folds.sh \
   --image-dir /path/to/mbgv2/frames \
   --annotations-dir /path/to/annotations \
   --overlap-ratio 0.067 \
   --object-name tire
+
+# Or specify number of parallel workers
+./sh/frame_slicing/process_all_folds.sh \
+  --image-dir /path/to/mbgv2/frames \
+  --annotations-dir /path/to/annotations \
+  --overlap-ratio 0.067 \
+  --object-name tire \
+  --n-workers 8
 ```
 The output will contain train/val folders containing the sliced images, COCO and YOLO annotations.
+
+**Performance**: The script automatically parallelizes processing across all fold and min_area_ratio combinations (55 total jobs) for maximum efficiency.
 
 **Parameters:**
 - **Overlap ratio**: 0.067 (equivalent to 42px for tires, based on the maximum dimension of average object resolution)
@@ -68,7 +78,8 @@ bash sh/frame_slicing/process_all_folds.sh \
   --image-dir [path to folder containing frames (images)] \
   --annotations-dir [path to dir w/ COCO annotations] \
   --overlap-ratio 0.067 \
-  --object-name tire
+  --object-name tire \
+  --n-workers 4
 ```
 
 ### Model Training (Fine-tuning)
@@ -88,12 +99,12 @@ It will also display the average F1 score for each fold, as well as the optimal 
 
 ### Custom Frame Slicing (beyond dissertation)
 
-For more flexible frame slicing with custom fold selection, dataset splits, and min_area_ratio values, you can use the script `custom_fold_processing.sh`. For further instructions of customisation, read the `README.md` inside `sh`. Here are some 
+For more flexible frame slicing with custom fold selection, dataset splits, and min_area_ratio values, you can use the script `custom_fold_processing.sh`. For further instructions of customisation, read the `README.md` inside `sh`.
 
 ```bash
 chmod +x sh/frame_slicing/custom_fold_processing.sh
 
-# Basic usage with mandatory parameters
+# Basic usage with mandatory parameters (uses all available CPU cores by default)
 ./sh/frame_slicing/custom_fold_processing.sh \
   --image-dir "/path/to/frames" \
   --annotations-dir "/path/to/annotations" \
@@ -102,22 +113,35 @@ chmod +x sh/frame_slicing/custom_fold_processing.sh
   --folds "0-4" \
   --splits "train val" \
   --min-area-ratios "0.0"
+
+# With custom number of parallel workers
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/annotations" \
+  --object-name "watertank" \
+  --overlap-ratio 0.1 \
+  --folds "0-4" \
+  --splits "train val" \
+  --min-area-ratios "0.0" \
+  --n-workers 6
 ```
 
 - **Custom fold selection**: Process specific folds (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"1"`)
 - **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val"`, etc.)
 - **Custom min_area_ratio ranges**: Define specific values (`"0.0,0.5,1.0"`) or ranges (`"0.5-0.8"`)
+- **Parallel processing**: Automatically parallelizes all fold+min_area_ratio+split combinations for optimal performance
 
 
 **Examples:**
 ```bash
-# Process only folds 0-2 with train and val splits
+# Process only folds 0-2 with train and val splits (with 4 parallel workers)
 ./sh/frame_slicing/custom_fold_processing.sh \
   --image-dir "./frames" --annotations-dir "./annotations" \
   --object-name "tire" --overlap-ratio 0.067 \
-  --folds "0-2" --splits "train val"
+  --folds "0-2" --splits "train val" \
+  --n-workers 4
 
-# Process specific min_area_ratios for single fold
+# Process specific min_area_ratios for single fold (uses all available CPUs)
 ./sh/frame_slicing/custom_fold_processing.sh \
   --image-dir "./frames" --annotations-dir "./annotations" \
   --object-name "watertank" --overlap-ratio 0.1 \
