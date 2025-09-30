@@ -11,8 +11,6 @@
 #  all min_area_ratios in range
 #  [0.0, 0.1, ..., 1.0]
 #
-#  TODO: OPTIMIZE the slicing process
-#  settings
 #####################################
 
 OBJECT_NAME="tire"
