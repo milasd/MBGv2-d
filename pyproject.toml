@@ -1,6 +1,6 @@
 [project]
 name = "mbgv2-dissertation"
-version = "0.3.0"
+version = "1.0.0"
 description = "MBGv2 dataset pre-processing and finetuning scripts for YOLO models."
 authors = [{ name = "milasd", email = "mila.oliveira@coppe.ufrj.br" }]
 requires-python = "~=3.11"
