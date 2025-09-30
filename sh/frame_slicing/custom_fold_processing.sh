@@ -219,7 +219,7 @@ fi
 
 # Parse fold range
 FOLD_LIST=$(parse_range "$FOLDS")
-echo "Processing folds: $FOLD_LIST"
+echo "Processing input folds: $FOLD_LIST"
 
 # Parse min_area_ratio range
 MIN_AREA_RATIO_LIST=$(parse_min_area_ratios "$MIN_AREA_RATIOS")
@@ -242,7 +242,7 @@ for FOLD in $FOLD_LIST; do
     # Increment fold number by 1 for output directory naming
     OUTPUT_FOLD=$((FOLD + 1))
     
-    echo "Processing fold $FOLD (output folder: 'fold${OUTPUT_FOLD}')..."
+    echo "Processing input fold index: $FOLD (output folder: 'fold${OUTPUT_FOLD}')..."
     
     # Generate data for each min_area_ratio
     for MIN_AREA_RATIO in $MIN_AREA_RATIO_LIST; do
