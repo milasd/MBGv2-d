@@ -4,10 +4,11 @@ This directory contains shell scripts for automating the MBGv2 dataset processin
 
 ## Scripts Overview
 
-### Frame Slicing Pipeline
-- **`frame_slicing/process_all_folds.sh`**: Processes all 5 folds of the MBGv2 dataset, slicing 4K frames into 640x640 excerpts with overlapping regions and generating COCO and YOLO format annotations. The default parameters follow the slicing process for tires.
+### Frame Slicing Tools
 
-- **`frame_slicing/custom_fold_processing.sh`**: Flexible frame slicing script with customizable fold selection, dataset splits, and min_area_ratio values. Supports incremental processing and partial dataset generation.
+- **`frame_slicing/process_all_folds.sh`**: Processes all 5 folds of the MBGv2 dataset, slicing 4K frames into 640x640 excerpts with overlapping regions and generating COCO and YOLO format annotations. The script automatically parallelizes all 55 combinations processing (5 folds × 11 `min_area_ratios`) for better performance. Follows the experiment in the dissertation.
+
+- **`frame_slicing/custom_fold_processing.sh`**: Flexible frame slicing script with customizable fold selection, dataset splits, and min_area_ratio values.The script automatically parallelizes all fold+min_area_ratio+split combinations processing for efficiency. Supports incremental processing and partial dataset generation.
 
 ### Model Training Pipeline  
 - **`yolo/train_all_folds.sh`**: Trains YOLOv8s models across all 5 folds using the sliced dataset with customizable parameters.
@@ -62,13 +63,18 @@ OPTIONS:
     --overlap-ratio NUM     Overlap ratio between slices (default: 0.067, for MBGv2 tires)
     --object_name TEXT      Class of MBGv2 object in annotations (default: tire)
     --output_dir DIR        Path to output directory (default: ./MBGv2_sliced)
+    --n-workers NUM         Number of parallel workers to use for processing
+                               (default: number of available CPUs, capped at available CPUs)
     --help                  Show this help message and exit
 
 
 
 EXAMPLES:
+    # Basic usage (uses all available CPU cores)
     ./sh/frame_slicing/process_all_folds.sh --image-dir data_mosquitoes_v2/frames --annotations-dir data_mosquitoes_v2/coco_json_folds/5folds/tire/40m
-    ./sh/frame_slicing/process_all_folds.sh --image-dir ./frames --annotations-dir ./annotations --slice-size 512 --overlap-ratio 0.1
+    
+    # With custom parameters and 8 parallel workers
+    ./sh/frame_slicing/process_all_folds.sh --image-dir ./frames --annotations-dir ./annotations --slice-size 512 --overlap-ratio 0.1 --n-workers 8
 
 
 
@@ -117,7 +123,7 @@ OUTPUT DIRECTORY STRUCTURE:
 
 **Example with custom parameters**
 
-Slicing for watertanks:
+Slicing for watertanks with 6 parallel workers:
 
 ```bash
 chmod +x sh/frame_slicing/process_all_folds.sh
@@ -126,12 +132,14 @@ bash sh/frame_slicing/process_all_folds.sh \
   --annotations-dir /path/to/dir/annotations \
   --output-dir ./custom_output_dir \
   --overlap-ratio 0.1 \
-  --object-name watertank
+  --object-name watertank \
+  --n-workers 6
 ```
+
 
 ### Custom Frame Slicing
 
-The `custom_fold_processing.sh` script provides flexible frame slicing with granular control over folds, dataset splits, and min_area_ratio values. This script is ideal for custom experiments or incremental processing.
+The `custom_fold_processing.sh` script provides flexible frame slicing with granular control over folds, dataset splits, and min_area_ratio values. This script is ideal for custom experiments or incremental processing. Processes all fold+min_area_ratio+split combinations parallely for efficiency.
 
 **Slicing options:**
 - **Custom fold selection**: Process specific folds or ranges (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"2"`)
@@ -145,7 +153,7 @@ Run the script passing the required parameters.
 ```bash
 chmod +x sh/frame_slicing/custom_fold_processing.sh
 
-# Basic usage with mandatory parameters
+# Basic usage with mandatory parameters (uses all available CPU cores)
 ./sh/frame_slicing/custom_fold_processing.sh \
   --image-dir "/path/to/frames" \
   --annotations-dir "/path/to/annotations" \
@@ -154,6 +162,17 @@ chmod +x sh/frame_slicing/custom_fold_processing.sh
   --folds "0-4" \
   --splits "train val" \
   --min-area-ratios "0.0-1.0"
+
+# With custom number of parallel workers
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/annotations" \
+  --object-name "tire" \
+  --overlap-ratio 0.067 \
+  --folds "0-4" \
+  --splits "train val" \
+  --min-area-ratios "0.0-1.0" \
+  --n-workers 4
 ```
 
 **Full documentation:**
@@ -183,6 +202,8 @@ OPTIONS:
     --min-area-ratios LIST  Comma-separated list of min_area_ratio values
                                (e.g., "0.0,0.5,1.0" or "0.0-1.0" or "0.5")
                                (default: "0.0-1.0" in steps of 0.1)
+    --n-workers NUM         Number of parallel workers to use for processing
+                               (default: number of available CPUs, capped at available CPUs)
     --help                  Show this help message and exit
 
 FOLD SPECIFICATION:
@@ -198,14 +219,14 @@ MIN_AREA_RATIO SPECIFICATION:
     - Mixed: "0.0,0.5-0.8,1.0"
 
 EXAMPLES:
-    # Process folds 0-2 with train and val splits
+    # Process folds 0-2 with train and val splits (uses all available CPUs)
     ./sh/frame_slicing/custom_fold_processing.sh --folds "0-2" --splits "train val"
     
-    # Process only fold 0 with all splits and specific min_area_ratios
-    ./sh/frame_slicing/custom_fold_processing.sh --folds "0" --splits "train val test" --min-area-ratios "0.0,0.5,1.0"
+    # Process only fold 0 with all splits and specific min_area_ratios (4 workers)
+    ./sh/frame_slicing/custom_fold_processing.sh --folds "0" --splits "train val test" --min-area-ratios "0.0,0.5,1.0" --n-workers 4
     
-    # Process folds 1 and 3 with only train split
-    ./sh/frame_slicing/custom_fold_processing.sh --folds "1,3" --splits "train" --min-area-ratios "0.5-0.8"
+    # Process folds 1 and 3 with only train split (8 workers)
+    ./sh/frame_slicing/custom_fold_processing.sh --folds "1,3" --splits "train" --min-area-ratios "0.5-0.8" --n-workers 8
 ```
 
 **Usage Examples**

@@ -26,7 +26,7 @@ BASE_OUT_DIR="MBGv2_sliced"
 COCO_YOLO_SCRIPT_PATH="MBGv2_dissertation/data_preprocessing/coco2yolo.py"
 REMOVE_EMPTY_SLICES_SCRIPT_PATH="MBGv2_dissertation/data_preprocessing/remove_empty_samples.py"
 
-# Parallelization parameter
+# N. of parallel workers
 N_WORKERS=""
 
 
