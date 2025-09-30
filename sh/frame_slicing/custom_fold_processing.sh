@@ -32,6 +32,7 @@ REMOVE_EMPTY_SLICES_SCRIPT_PATH="MBGv2_dissertation/data_preprocessing/remove_em
 FOLDS=""
 SPLITS="train val"
 MIN_AREA_RATIOS=""
+N_WORKERS=""
 
 show_help() {
     cat << EOF
@@ -68,6 +69,8 @@ OPTIONS:
     --min-area-ratios LIST  Comma-separated list of min_area_ratio values
                                (e.g., "0.0,0.5,1.0" or "0.0-1.0" or "0.5")
                                (default: "0.0-1.0" in steps of 0.1)
+    --n-workers NUM         Number of parallel workers to use for fold processing
+                               (default: number of available CPUs, capped at available CPUs)
     --help                  Show this help message and exit
 
 EXAMPLES:
@@ -196,6 +199,10 @@ while [[ $# -gt 0 ]]; do
             MIN_AREA_RATIOS="$2"
             shift 2
             ;;
+        --n-workers)
+            N_WORKERS="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -217,6 +224,18 @@ if [[ -z "$MIN_AREA_RATIOS" ]]; then
     MIN_AREA_RATIOS="0.0-1.0"
 fi
 
+# Set default number of workers to available CPUs
+if [[ -z "$N_WORKERS" ]]; then
+    N_WORKERS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+fi
+
+# Cap N_WORKERS to available CPUs
+MAX_CPUS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+if [[ $N_WORKERS -gt $MAX_CPUS ]]; then
+    echo "Warning: Requested $N_WORKERS workers, but only $MAX_CPUS CPUs available. Using $MAX_CPUS workers."
+    N_WORKERS=$MAX_CPUS
+fi
+
 # Parse fold range
 FOLD_LIST=$(parse_range "$FOLDS")
 echo "Processing input folds: $FOLD_LIST"
@@ -227,6 +246,7 @@ echo "Using min_area_ratios: $MIN_AREA_RATIO_LIST"
 
 # Parse splits
 echo "Processing splits: $SPLITS"
+echo "Using $N_WORKERS parallel workers"
 
 # Check if output directory exists and creates it if not
 [[ ! -d "$BASE_OUT_DIR" ]] && mkdir -p "$BASE_OUT_DIR"
@@ -237,8 +257,10 @@ if ! command -v bc &> /dev/null; then
     exit 1
 fi
 
-# Loop over each specified fold
-for FOLD in $FOLD_LIST; do
+# Function to process a single fold
+process_fold() {
+    local FOLD=$1
+    
     # Increment fold number by 1 for output directory naming
     OUTPUT_FOLD=$((FOLD + 1))
     
@@ -353,6 +375,26 @@ EOL
         fi
     done
     echo "Completed processing for fold $FOLD (output folder fold${OUTPUT_FOLD})."
+}
+
+# Process folds in parallel
+RUNNING_JOBS=0
+FOLD_ARRAY=($FOLD_LIST)
+
+for FOLD in "${FOLD_ARRAY[@]}"; do
+    # Wait if we've reached the maximum number of parallel workers
+    while [[ $RUNNING_JOBS -ge $N_WORKERS ]]; do
+        # Wait for any background job to complete
+        wait -n
+        RUNNING_JOBS=$((RUNNING_JOBS - 1))
+    done
+    
+    # Start fold processing in background
+    process_fold $FOLD &
+    RUNNING_JOBS=$((RUNNING_JOBS + 1))
 done
+
+# Wait for all remaining background jobs to complete
+wait
 
 echo "All processes for specified folds completed!"
