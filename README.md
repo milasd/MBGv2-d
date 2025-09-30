@@ -27,10 +27,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then clone the repository and install the project dependencies:
 
 ```bash
-cd MBGv2-dissertation
+cd MBGv2-d
 
 # Install all dependencies
-uv venv && uv sync
+uv sync
 ```
 
 ## How to Run
@@ -77,12 +77,54 @@ Subsequently train and validate a YOLOv8s model with the sliced dataset:
 
 ```bash
 chmod +x sh/yolo/train_all_folds.sh
-bash sh/yolo/train_all_folds.sh --data_dir [Path to dir w/ training data .YAML] 
+bash sh/yolo/train_all_folds.sh --data_dir [Path to dir w/ training data .YAML] --hyp-config [path to training hyperparameter config yaml]
 ```
 
 This script will reproduce the training and evaluation across the 5 folds for the MBGv2.
 It will also display the average F1 score for each fold, as well as the optimal threshold for detection.
 
+
+---
+
+### Custom Frame Slicing (beyond dissertation)
+
+For more flexible frame slicing with custom fold selection, dataset splits, and min_area_ratio values, you can use the script `custom_fold_processing.sh`. For further instructions of customisation, read the `README.md` inside `sh`. Here are some 
+
+```bash
+chmod +x sh/frame_slicing/custom_fold_processing.sh
+
+# Basic usage with mandatory parameters
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "/path/to/frames" \
+  --annotations-dir "/path/to/annotations" \
+  --object-name "watertank" \
+  --overlap-ratio 0.1 \
+  --folds "0-4" \
+  --splits "train val" \
+  --min-area-ratios "0.0"
+```
+
+- **Custom fold selection**: Process specific folds (e.g., `"0,2-4"`, `"1,3"`, `"0-20"`, `"1"`)
+- **Flexible dataset splits**: Choose which splits to process (`"train"`, `"val"`, `"test"`, `"train val"`, etc.)
+- **Custom min_area_ratio ranges**: Define specific values (`"0.0,0.5,1.0"`) or ranges (`"0.5-0.8"`)
+
+
+**Examples:**
+```bash
+# Process only folds 0-2 with train and val splits
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "./frames" --annotations-dir "./annotations" \
+  --object-name "tire" --overlap-ratio 0.067 \
+  --folds "0-2" --splits "train val"
+
+# Process specific min_area_ratios for single fold
+./sh/frame_slicing/custom_fold_processing.sh \
+  --image-dir "./frames" --annotations-dir "./annotations" \
+  --object-name "watertank" --overlap-ratio 0.1 \
+  --folds "0" --splits "train val test" \
+  --min-area-ratios "0.0,0.5,1.0"
+```
+---
 
 ## Expected Data Structure
 
@@ -139,6 +181,8 @@ uv run make check
 
 ## Configuration
 
-### Hyperparameter Files
-- `config/hyp.mosquito.tire.yaml`: Settings for tire detection
-- `config/hyp.mosquito.watertank.yaml`: Settings for watertank detection
+### Default Training Hyperparameter Files
+- `config/hyp.mosquito.tire.yaml`: Sample settings for tire detection
+- `config/hyp.mosquito.watertank.yaml`: Sample settings for watertank detection
+
+- `config/hyp_mosquito_tire_dissertation.yaml`: Dissertation experiment settings for tire detection

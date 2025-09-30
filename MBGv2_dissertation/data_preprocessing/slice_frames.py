@@ -42,7 +42,10 @@ def parse_arguments():
         help="Path to the COCO JSON file.",
     )
     parser.add_argument(
-        "--slice_size", type=int, default=640, help="Dimensions of each slice (default: 640x640)."
+        "--slice_size",
+        type=int,
+        default=640,
+        help="Dimensions of each slice (default: 640x640).",
     )
     parser.add_argument(
         "--overlap_ratio",
