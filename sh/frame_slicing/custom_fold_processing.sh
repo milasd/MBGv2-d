@@ -242,7 +242,7 @@ for FOLD in $FOLD_LIST; do
     # Increment fold number by 1 for output directory naming
     OUTPUT_FOLD=$((FOLD + 1))
     
-    echo "Processing fold $FOLD (output folder fold${OUTPUT_FOLD})..."
+    echo "Processing fold $OUTPUT_FOLD (output folder: 'fold${FOLD}')..."
     
     # Generate data for each min_area_ratio
     for MIN_AREA_RATIO in $MIN_AREA_RATIO_LIST; do
